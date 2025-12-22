@@ -12,6 +12,8 @@ import { Phone, PhoneOff, ChevronDown, ChevronUp, FileSpreadsheet, Play, Square 
 import { Badge } from "@/components/ui/badge"
 import { FileUpload } from "@/components/ui/file-upload"
 import { Progress } from "@/components/ui/progress"
+import { useProject } from "@/lib/project-context"
+import { useMemo } from "react"
 
 type CallingMode = "normal" | "dead-leads"
 
@@ -31,6 +33,7 @@ interface UploadedFile {
 type ServiceType = "conversation" | "announcement"
 
 export default function CallingPage() {
+  const { activeProject } = useProject()
   const [callingMode, setCallingMode] = useState<CallingMode>("normal")
   const [serviceType, setServiceType] = useState<ServiceType>("conversation")
   const [selectedSystemPromptId, setSelectedSystemPromptId] = useState<string>("default")
@@ -190,103 +193,102 @@ export default function CallingPage() {
     }
   }
 
-  const completedCalls = [
-    {
-      sid: "CA1234567890abcdef",
-      to: "+1 (555) 123-4567",
-      duration: "00:05:23",
-      endTime: "11:45:32 AM",
-      status: "Completed",
-    },
-    {
-      sid: "CA2345678901bcdefg",
-      to: "+1 (555) 234-5678",
-      duration: "00:03:45",
-      endTime: "11:42:18 AM",
-      status: "Completed",
-    },
-    {
-      sid: "CA3456789012cdefgh",
-      to: "+1 (555) 345-6789",
-      duration: "00:07:12",
-      endTime: "11:38:56 AM",
-      status: "Completed",
-    },
-  ]
+  // TODO: Replace with Supabase query: SELECT * FROM calls WHERE project_id = $1 AND status = 'completed'
+  const completedCalls = useMemo(() => {
+    if (!activeProject) return []
+    // Mock data - in production, this would be fetched from Supabase filtered by projectId
+    return [
+      {
+        sid: `CA${activeProject.id.slice(-6)}123456`,
+        to: "+1 (555) 123-4567",
+        duration: "00:05:23",
+        endTime: "11:45:32 AM",
+        status: "Completed",
+      },
+      {
+        sid: `CA${activeProject.id.slice(-6)}234567`,
+        to: "+1 (555) 234-5678",
+        duration: "00:03:45",
+        endTime: "11:42:18 AM",
+        status: "Completed",
+      },
+    ]
+  }, [activeProject])
 
-  const declinedCalls = [
-    {
-      sid: "CA4567890123defghi",
-      to: "+1 (555) 456-7890",
-      reason: "No answer",
-      timestamp: "11:48:23 AM",
-    },
-    {
-      sid: "CA5678901234efghij",
-      to: "+1 (555) 567-8901",
-      reason: "Busy",
-      timestamp: "11:46:15 AM",
-    },
-    {
-      sid: "CA6789012345fghijk",
-      to: "+1 (555) 678-9012",
-      reason: "Call rejected",
-      timestamp: "11:43:42 AM",
-    },
-  ]
+  // TODO: Replace with Supabase query: SELECT * FROM calls WHERE project_id = $1 AND status IN ('declined', 'failed')
+  const declinedCalls = useMemo(() => {
+    if (!activeProject) return []
+    return [
+      {
+        sid: `CA${activeProject.id.slice(-6)}456789`,
+        to: "+1 (555) 456-7890",
+        reason: "No answer",
+        timestamp: "11:48:23 AM",
+      },
+      {
+        sid: `CA${activeProject.id.slice(-6)}567890`,
+        to: "+1 (555) 567-8901",
+        reason: "Busy",
+        timestamp: "11:46:15 AM",
+      },
+    ]
+  }, [activeProject])
 
-  const callHistory = [
-    {
-      sid: "CA1234567890abcdef",
-      direction: "Outbound",
-      status: "Completed",
-      duration: "00:05:23",
-      timestamp: "2025-01-15 11:45:32",
-    },
-    {
-      sid: "CA2345678901bcdefg",
-      direction: "Outbound",
-      status: "Completed",
-      duration: "00:03:45",
-      timestamp: "2025-01-15 11:42:18",
-    },
-    {
-      sid: "CA3456789012cdefgh",
-      direction: "Inbound",
-      status: "Completed",
-      duration: "00:07:12",
-      timestamp: "2025-01-15 11:38:56",
-    },
-    {
-      sid: "CA4567890123defghi",
-      direction: "Outbound",
-      status: "No Answer",
-      duration: "00:00:00",
-      timestamp: "2025-01-15 11:48:23",
-    },
-    {
-      sid: "CA5678901234efghij",
-      direction: "Outbound",
-      status: "Busy",
-      duration: "00:00:00",
-      timestamp: "2025-01-15 11:46:15",
-    },
-  ]
+  // TODO: Replace with Supabase query: SELECT * FROM calls WHERE project_id = $1 ORDER BY timestamp DESC
+  const callHistory = useMemo(() => {
+    if (!activeProject) return []
+    return [
+      {
+        sid: `CA${activeProject.id.slice(-6)}123456`,
+        direction: "Outbound",
+        status: "Completed",
+        duration: "00:05:23",
+        timestamp: "2025-01-15 11:45:32",
+      },
+      {
+        sid: `CA${activeProject.id.slice(-6)}234567`,
+        direction: "Outbound",
+        status: "Completed",
+        duration: "00:03:45",
+        timestamp: "2025-01-15 11:42:18",
+      },
+      {
+        sid: `CA${activeProject.id.slice(-6)}345678`,
+        direction: "Inbound",
+        status: "Completed",
+        duration: "00:07:12",
+        timestamp: "2025-01-15 11:38:56",
+      },
+    ]
+  }, [activeProject])
+
+  if (!activeProject) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Calling</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">Please select a project to configure and monitor your AI-powered calling system.</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Calling</h1>
-            <p className="text-muted-foreground mt-1">Configure and monitor your AI-powered calling system</p>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Calling</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">Configure and monitor your AI-powered calling system</p>
           </div>
-          <div className="flex items-center gap-3">
-            <Label htmlFor="calling-mode" className="text-sm font-medium">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
+            <Label htmlFor="calling-mode" className="text-sm font-medium whitespace-nowrap">
               Mode:
             </Label>
             <Select value={callingMode} onValueChange={(value) => setCallingMode(value as CallingMode)}>
-              <SelectTrigger id="calling-mode" className="w-[180px]">
+              <SelectTrigger id="calling-mode" className="w-full sm:w-[180px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

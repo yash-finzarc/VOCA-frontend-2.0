@@ -16,46 +16,83 @@ import {
   CheckCircle2,
   XCircle,
   ArrowUpRight,
+  FolderKanban,
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useProject } from "@/lib/project-context"
-import { getProjectCalls, getProjectMessages, getProjectCallingStatus, getProjectMessageStatus, getProjectStats } from "@/lib/mock-data"
+import {
+  getAllProjectsCalls,
+  getAllProjectsMessages,
+  getAllProjectsCallingStatus,
+  getAllProjectsMessageStatus,
+  getAllProjectsStats,
+} from "@/lib/mock-data"
 import { PieChart, Pie, Cell } from "recharts"
-import { useEffect, useMemo } from "react"
+import { useMemo } from "react"
 
-export default function DashboardPage() {
+export default function OverallDashboardPage() {
   const { user } = useAuth()
-  const { activeProject } = useProject()
+  const { projects } = useProject()
 
-  // Get project-scoped data
-  const projectStats = useMemo(() => {
-    if (!activeProject) return null
-    return getProjectStats(activeProject.id)
-  }, [activeProject])
+  const projectIds = useMemo(() => projects.map((p) => p.id), [projects])
+
+  // Get aggregated data across all projects
+  const allProjectsStats = useMemo(() => {
+    if (projectIds.length === 0) return null
+    return getAllProjectsStats(projectIds)
+  }, [projectIds])
 
   const callingStatus = useMemo(() => {
-    if (!activeProject) return { active: 0, queued: 0, completed: 0, failed: 0 }
-    return getProjectCallingStatus(activeProject.id)
-  }, [activeProject])
+    if (projectIds.length === 0) return { active: 0, queued: 0, completed: 0, failed: 0 }
+    return getAllProjectsCallingStatus(projectIds)
+  }, [projectIds])
 
   const messageStatus = useMemo(() => {
-    if (!activeProject) return { sent: 0, pending: 0, failed: 0, delivered: 0 }
-    return getProjectMessageStatus(activeProject.id)
-  }, [activeProject])
+    if (projectIds.length === 0) return { sent: 0, pending: 0, failed: 0, delivered: 0 }
+    return getAllProjectsMessageStatus(projectIds)
+  }, [projectIds])
 
   const recentCalls = useMemo(() => {
-    if (!activeProject) return []
-    return getProjectCalls(activeProject.id).slice(0, 4)
-  }, [activeProject])
+    if (projectIds.length === 0) return []
+    const allCalls = getAllProjectsCalls(projectIds)
+    // Return all calls from all projects, sorted by most recent
+    return allCalls.map((call) => ({
+      id: call.id,
+      contact: call.contact,
+      type: call.type,
+      duration: call.duration,
+      status: call.status,
+      time: call.time,
+      projectId: call.projectId,
+    }))
+  }, [projectIds])
 
   const recentMessages = useMemo(() => {
-    if (!activeProject) return []
-    return getProjectMessages(activeProject.id).slice(0, 4)
-  }, [activeProject])
+    if (projectIds.length === 0) return []
+    const allMessages = getAllProjectsMessages(projectIds)
+    // Return all messages from all projects
+    return allMessages.map((msg) => ({
+      id: msg.id,
+      type: msg.type,
+      channel: msg.channel,
+      status: msg.status,
+      recipient: msg.recipient,
+      time: msg.time,
+      preview: msg.preview,
+      projectId: msg.projectId,
+    }))
+  }, [projectIds])
 
   const stats = useMemo(() => {
-    if (!projectStats) {
+    if (!allProjectsStats) {
       return [
+        {
+          title: "Total Projects",
+          value: "0",
+          change: "-",
+          icon: FolderKanban,
+          trend: "neutral" as const,
+        },
         {
           title: "Avg Call Duration",
           value: "0:00",
@@ -64,7 +101,7 @@ export default function DashboardPage() {
           trend: "down" as const,
         },
         {
-          title: "Cost Savings",
+          title: "Total Cost Savings",
           value: "$0",
           change: "-",
           icon: DollarSign,
@@ -74,21 +111,28 @@ export default function DashboardPage() {
     }
     return [
       {
+        title: "Total Projects",
+        value: allProjectsStats.totalProjects.toString(),
+        change: "+" + (allProjectsStats.totalProjects - 3),
+        icon: FolderKanban,
+        trend: "up" as const,
+      },
+      {
         title: "Avg Call Duration",
-        value: projectStats.avgCallDuration,
-        change: "-0:12",
+        value: allProjectsStats.avgCallDuration,
+        change: "-0:04",
         icon: Clock,
         trend: "down" as const,
       },
       {
-        title: "Cost Savings",
-        value: projectStats.costSavings,
+        title: "Total Cost Savings",
+        value: allProjectsStats.totalCostSavings,
         change: "+18.2%",
         icon: DollarSign,
         trend: "up" as const,
       },
     ]
-  }, [projectStats])
+  }, [allProjectsStats])
 
   const getMessageStatusIcon = (status: string) => {
     switch (status) {
@@ -112,13 +156,13 @@ export default function DashboardPage() {
     return variants[status as keyof typeof variants] || ""
   }
 
-  if (!activeProject) {
+  if (projects.length === 0) {
     return (
       <DashboardLayout>
         <div className="space-y-6">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Welcome back, {user?.name}!</h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1">Please select a project to view dashboard data.</p>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Overall Dashboard</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">No projects found. Create a project to see aggregated statistics.</p>
           </div>
         </div>
       </DashboardLayout>
@@ -129,51 +173,14 @@ export default function DashboardPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Welcome back, {user?.name}!</h1>
-          <p className="text-sm sm:text-base text-muted-foreground mt-1">Here's what's happening with your voice agents and messaging today.</p>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Overall Dashboard</h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
+            Aggregated statistics across all {projects.length} project{projects.length !== 1 ? "s" : ""}
+          </p>
         </div>
 
-        {/* Quick Actions */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>Common tasks and shortcuts</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <Link href="/dashboard/calling">
-                <button className="flex items-center gap-3 p-4 rounded-lg border border-border hover:bg-muted transition-colors text-left w-full">
-                  <PhoneCall className="h-5 w-5 text-accent" />
-                  <div>
-                    <p className="text-sm font-medium">Make a Call</p>
-                    <p className="text-xs text-muted-foreground">Start new conversation</p>
-                  </div>
-                </button>
-              </Link>
-              <Link href="/dashboard/messages">
-                <button className="flex items-center gap-3 p-4 rounded-lg border border-border hover:bg-muted transition-colors text-left w-full">
-                  <MessageSquare className="h-5 w-5 text-accent" />
-                  <div>
-                    <p className="text-sm font-medium">View Messages</p>
-                    <p className="text-xs text-muted-foreground">Check message logs</p>
-                  </div>
-                </button>
-              </Link>
-              <Link href="/dashboard/logs">
-                <button className="flex items-center gap-3 p-4 rounded-lg border border-border hover:bg-muted transition-colors text-left w-full">
-                  <AlertCircle className="h-5 w-5 text-accent" />
-                  <div>
-                    <p className="text-sm font-medium">View Logs</p>
-                    <p className="text-xs text-muted-foreground">System & call logs</p>
-                  </div>
-                </button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Stats Grid */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-3">
           {stats.map((stat) => {
             const Icon = stat.icon
             return (
@@ -184,8 +191,8 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{stat.value}</div>
-                  <p className={`text-xs ${stat.trend === "up" ? "text-green-600" : "text-red-600"} mt-1`}>
-                    {stat.change} from last month
+                  <p className={`text-xs ${stat.trend === "up" ? "text-green-600" : stat.trend === "down" ? "text-red-600" : "text-muted-foreground"} mt-1`}>
+                    {stat.change} {stat.trend !== "neutral" && "from last month"}
                   </p>
                 </CardContent>
               </Card>
@@ -202,9 +209,9 @@ export default function DashboardPage() {
                 <div>
                   <CardTitle className="flex items-center gap-2">
                     <Phone className="h-5 w-5" />
-                    Calling Status
+                    Calling Status (All Projects)
                   </CardTitle>
-                  <CardDescription>Overview of your call activity</CardDescription>
+                  <CardDescription>Aggregated call activity across all projects</CardDescription>
                 </div>
                 <Link href="/dashboard/calling">
                   <Button variant="ghost" size="sm" className="gap-2">
@@ -215,7 +222,10 @@ export default function DashboardPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <CallingStatusChart data={callingStatus} total={Object.values(callingStatus).reduce((sum, val) => sum + val, 0)} />
+              <CallingStatusChart
+                data={callingStatus}
+                total={Object.values(callingStatus).reduce((sum, val) => sum + val, 0)}
+              />
             </CardContent>
           </Card>
 
@@ -226,9 +236,9 @@ export default function DashboardPage() {
                 <div>
                   <CardTitle className="flex items-center gap-2">
                     <MessageSquare className="h-5 w-5" />
-                    Message Status
+                    Message Status (All Projects)
                   </CardTitle>
-                  <CardDescription>Overview of your messaging activity</CardDescription>
+                  <CardDescription>Aggregated messaging activity across all projects</CardDescription>
                 </div>
                 <Link href="/dashboard/messages">
                   <Button variant="ghost" size="sm" className="gap-2">
@@ -239,7 +249,10 @@ export default function DashboardPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <MessageStatusChart data={messageStatus} total={Object.values(messageStatus).reduce((sum, val) => sum + val, 0)} />
+              <MessageStatusChart
+                data={messageStatus}
+                total={Object.values(messageStatus).reduce((sum, val) => sum + val, 0)}
+              />
             </CardContent>
           </Card>
         </div>
@@ -251,8 +264,8 @@ export default function DashboardPage() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Recent Calls</CardTitle>
-                  <CardDescription>Your latest call activity</CardDescription>
+                  <CardTitle>Recent Calls (All Projects)</CardTitle>
+                  <CardDescription>Latest call activity across all projects</CardDescription>
                 </div>
                 <Link href="/dashboard/calling">
                   <Button variant="ghost" size="sm" className="gap-2">
@@ -264,35 +277,51 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {recentCalls.map((call) => (
-                  <div key={call.id} className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                        {call.type === "Outbound" ? (
-                          <Phone className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <PhoneCall className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">{call.contact}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {call.type} • {call.duration}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p
-                        className={`text-xs font-medium ${
-                          call.status === "Completed" ? "text-green-600" : "text-red-600"
-                        }`}
-                      >
-                        {call.status}
-                      </p>
-                      <p className="text-xs text-muted-foreground">{call.time}</p>
-                    </div>
+                {recentCalls.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Phone className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                    <p className="text-sm">No calls found across all projects</p>
                   </div>
-                ))}
+                ) : (
+                  recentCalls.map((call) => {
+                    const project = projects.find((p) => p.id === call.projectId)
+                    return (
+                      <div key={call.id} className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                            {call.type === "Outbound" ? (
+                              <Phone className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <PhoneCall className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">{call.contact}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {call.type} • {call.duration}
+                              {project && (
+                                <>
+                                  {" • "}
+                                  <span className="font-medium">{project.name}</span>
+                                </>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p
+                            className={`text-xs font-medium ${
+                              call.status === "Completed" ? "text-green-600" : "text-red-600"
+                            }`}
+                          >
+                            {call.status}
+                          </p>
+                          <p className="text-xs text-muted-foreground">{call.time}</p>
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
               </div>
             </CardContent>
           </Card>
@@ -302,8 +331,8 @@ export default function DashboardPage() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Recent Messages</CardTitle>
-                  <CardDescription>Your latest messaging activity</CardDescription>
+                  <CardTitle>Recent Messages (All Projects)</CardTitle>
+                  <CardDescription>Latest messaging activity across all projects</CardDescription>
                 </div>
                 <Link href="/dashboard/messages">
                   <Button variant="ghost" size="sm" className="gap-2">
@@ -315,30 +344,45 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {recentMessages.map((message) => (
-                  <div key={message.id} className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                        {getMessageStatusIcon(message.status)}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">{message.type}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="outline" className="text-xs">
-                            {message.channel}
-                          </Badge>
-                          <Badge variant="outline" className={`text-xs ${getMessageStatusBadge(message.status)}`}>
-                            {message.status}
-                          </Badge>
+                {recentMessages.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                    <p className="text-sm">No messages found across all projects</p>
+                  </div>
+                ) : (
+                  recentMessages.map((message) => {
+                    const project = projects.find((p) => p.id === message.projectId)
+                    return (
+                      <div key={message.id} className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                            {getMessageStatusIcon(message.status)}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">{message.type}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge variant="outline" className="text-xs">
+                                {message.channel}
+                              </Badge>
+                              <Badge variant="outline" className={`text-xs ${getMessageStatusBadge(message.status)}`}>
+                                {message.status}
+                              </Badge>
+                              {project && (
+                                <Badge variant="outline" className="text-xs">
+                                  {project.name}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-muted-foreground">{message.recipient}</p>
+                          <p className="text-xs text-muted-foreground">{message.time}</p>
                         </div>
                       </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-muted-foreground">{message.recipient}</p>
-                      <p className="text-xs text-muted-foreground">{message.time}</p>
-                    </div>
-                  </div>
-                ))}
+                    )
+                  })
+                )}
               </div>
             </CardContent>
           </Card>
@@ -349,10 +393,10 @@ export default function DashboardPage() {
 }
 
 // Calling Status Chart Component
-function CallingStatusChart({ 
-  data, 
-  total 
-}: { 
+function CallingStatusChart({
+  data,
+  total,
+}: {
   data: { active: number; queued: number; completed: number; failed: number }
   total: number
 }) {
@@ -419,10 +463,10 @@ function CallingStatusChart({
 }
 
 // Message Status Chart Component
-function MessageStatusChart({ 
-  data, 
-  total 
-}: { 
+function MessageStatusChart({
+  data,
+  total,
+}: {
   data: { sent: number; pending: number; failed: number; delivered: number }
   total: number
 }) {
@@ -487,3 +531,4 @@ function MessageStatusChart({
     </div>
   )
 }
+

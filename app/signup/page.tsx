@@ -27,12 +27,13 @@ export default function SignupPage() {
     setError("")
     setIsLoading(true)
 
-    const success = await signup(email, password, name, company)
+    const result = await signup(email, password, name, company)
 
-    if (success) {
-      router.push("/dashboard")
+    if (result.success) {
+      // Redirect to verification page with email
+      router.push(`/signup/verify?email=${encodeURIComponent(email)}`)
     } else {
-      setError("Email already exists")
+      setError(result.error || "Failed to create account. Please try again.")
     }
 
     setIsLoading(false)
@@ -70,15 +71,16 @@ export default function SignupPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="company">Company Name</Label>
+              <Label htmlFor="company">Organization Name</Label>
               <Input
                 id="company"
                 type="text"
-                placeholder="Acme Inc."
+                placeholder="My Organization"
                 value={company}
                 onChange={(e) => setCompany(e.target.value)}
                 required
               />
+              <p className="text-xs text-muted-foreground">This will be your organization name. You can change it later in settings.</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>

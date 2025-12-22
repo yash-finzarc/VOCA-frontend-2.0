@@ -9,11 +9,13 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/lib/auth-context"
+import { useProject } from "@/lib/project-context"
 import { Building2, Key, Webhook, Users, Eye, EyeOff, Copy, Check, Plus, Trash2, SettingsIcon } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function SettingsPage() {
   const { user } = useAuth()
+  const { activeProject, organization } = useProject()
   const [showApiKey, setShowApiKey] = useState(false)
   const [copiedKey, setCopiedKey] = useState(false)
   const [companyName, setCompanyName] = useState(user?.company || "")
@@ -22,6 +24,8 @@ export default function SettingsPage() {
   const apiKey = "voca_sk_live_1234567890abcdefghijklmnopqrstuvwxyz"
   const testApiKey = "voca_sk_test_abcdefghijklmnopqrstuvwxyz1234567890"
 
+  // TODO: Replace with Supabase query: SELECT * FROM webhooks WHERE project_id = $1 (if project-scoped) or organization_id = $1 (if org-scoped)
+  // For now, webhooks are project-scoped
   const webhooks = [
     {
       id: 1,
@@ -29,6 +33,7 @@ export default function SettingsPage() {
       url: "https://api.yourcompany.com/webhooks/call-completed",
       events: ["call.completed", "call.recording.ready"],
       status: "Active",
+      projectId: activeProject?.id,
     },
     {
       id: 2,
@@ -36,6 +41,7 @@ export default function SettingsPage() {
       url: "https://api.yourcompany.com/webhooks/message-sent",
       events: ["message.sent", "message.delivered"],
       status: "Active",
+      projectId: activeProject?.id,
     },
     {
       id: 3,
@@ -43,8 +49,9 @@ export default function SettingsPage() {
       url: "https://api.yourcompany.com/webhooks/ai-decision",
       events: ["ai.decision.made"],
       status: "Inactive",
+      projectId: activeProject?.id,
     },
-  ]
+  ].filter((wh) => !activeProject || wh.projectId === activeProject.id)
 
   const teamMembers = [
     {
@@ -83,8 +90,15 @@ export default function SettingsPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-          <p className="text-muted-foreground mt-1">Manage your organization, API keys, and team access</p>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Settings</h1>
+          <p className="text-muted-foreground mt-1">
+            Manage your organization, API keys, and team access
+            {activeProject && (
+              <span className="block mt-1 text-sm">
+                <span className="font-medium">Current Project:</span> {activeProject.name}
+              </span>
+            )}
+          </p>
         </div>
 
         <Tabs defaultValue="organization" className="space-y-4">
@@ -265,22 +279,39 @@ export default function SettingsPage() {
 
           {/* Webhooks */}
           <TabsContent value="webhooks">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Webhook URLs</CardTitle>
-                    <CardDescription>Configure endpoints to receive real-time event notifications</CardDescription>
+            {!activeProject ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Webhook URLs</CardTitle>
+                  <CardDescription>Please select a project to configure webhooks</CardDescription>
+                </CardHeader>
+              </Card>
+            ) : (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Webhook URLs</CardTitle>
+                      <CardDescription>
+                        Configure endpoints to receive real-time event notifications for{" "}
+                        <span className="font-medium">{activeProject.name}</span>
+                      </CardDescription>
+                    </div>
+                    <Button className="gap-2">
+                      <Plus className="h-4 w-4" />
+                      Add Webhook
+                    </Button>
                   </div>
-                  <Button className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    Add Webhook
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {webhooks.map((webhook) => (
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {webhooks.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Webhook className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                        <p className="text-sm">No webhooks configured for this project</p>
+                      </div>
+                    ) : (
+                      webhooks.map((webhook) => (
                     <div key={webhook.id} className="rounded-lg border border-border p-4 space-y-3">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -316,10 +347,12 @@ export default function SettingsPage() {
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                      ))
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* Team & Access Control */}

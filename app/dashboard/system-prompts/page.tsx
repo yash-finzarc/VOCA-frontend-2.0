@@ -20,6 +20,7 @@ import {
 import { Save, Loader2, Plus, Trash2, Phone, MessageSquare } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
+import { useProject } from "@/lib/project-context"
 
 type PromptType = "calling" | "messaging"
 
@@ -35,6 +36,7 @@ interface SystemPrompt {
 }
 
 export default function SystemPromptsPage() {
+  const { activeProject } = useProject()
   const { toast } = useToast()
   const [promptType, setPromptType] = useState<PromptType>("calling")
   const [prompts, setPrompts] = useState<SystemPrompt[]>([])
@@ -73,9 +75,15 @@ export default function SystemPromptsPage() {
   }, [selectedPromptId, prompts])
 
   const loadPrompts = () => {
+    if (!activeProject) {
+      setIsLoading(false)
+      return
+    }
+
     try {
       setIsLoading(true)
-      const storageKey = `voca_system_prompts_${promptType}`
+      // TODO: Replace with Supabase query: SELECT * FROM system_prompts WHERE project_id = $1 AND type = $2
+      const storageKey = `voca_system_prompts_${activeProject.id}_${promptType}`
       const savedPrompts = localStorage.getItem(storageKey)
       
       if (savedPrompts) {
@@ -300,7 +308,9 @@ export default function SystemPromptsPage() {
   }
 
   const savePrompts = (promptsToSave: SystemPrompt[]) => {
-    const storageKey = `voca_system_prompts_${promptType}`
+    if (!activeProject) return
+    // TODO: Replace with Supabase INSERT/UPDATE: INSERT INTO system_prompts (project_id, type, ...) VALUES (...)
+    const storageKey = `voca_system_prompts_${activeProject.id}_${promptType}`
     localStorage.setItem(storageKey, JSON.stringify(promptsToSave))
     setPrompts(promptsToSave)
   }
@@ -317,22 +327,35 @@ export default function SystemPromptsPage() {
     )
   }
 
+  if (!activeProject) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">System Prompts</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">Please select a project to configure AI system prompts and welcome messages.</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">System Prompts</h1>
-            <p className="text-muted-foreground mt-1">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">System Prompts</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">
               Configure the AI system prompts and welcome messages for {promptType === "calling" ? "voice calls" : "messaging"}
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Label htmlFor="prompt-type" className="text-sm font-medium">
+            <Label htmlFor="prompt-type" className="text-sm font-medium whitespace-nowrap">
               Service Type:
             </Label>
             <Select value={promptType} onValueChange={(value) => setPromptType(value as PromptType)}>
-              <SelectTrigger id="prompt-type" className="w-[200px]">
+              <SelectTrigger id="prompt-type" className="w-full sm:w-[200px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -416,7 +439,7 @@ export default function SystemPromptsPage() {
                           id="new-system-prompt"
                           value={systemPrompt}
                           onChange={(e) => setSystemPrompt(e.target.value)}
-                          className="min-h-[200px] font-mono text-sm"
+                          className="min-h-[150px] sm:min-h-[180px] md:min-h-[200px] font-mono text-sm"
                           placeholder="Enter system prompt..."
                         />
                       </div>
@@ -426,7 +449,7 @@ export default function SystemPromptsPage() {
                           id="new-welcome-message"
                           value={welcomeMessage}
                           onChange={(e) => setWelcomeMessage(e.target.value)}
-                          className="min-h-[100px] text-sm"
+                          className="min-h-[80px] sm:min-h-[100px] text-sm"
                           placeholder="Enter welcome message..."
                         />
                         <p className="text-xs text-muted-foreground">
@@ -487,7 +510,7 @@ export default function SystemPromptsPage() {
                     id="system-prompt"
                     value={systemPrompt}
                     onChange={(e) => setSystemPrompt(e.target.value)}
-                    className="min-h-[200px] font-mono text-sm"
+                    className="min-h-[150px] sm:min-h-[180px] md:min-h-[200px] font-mono text-sm"
                     placeholder="Enter system prompt..."
                   />
                   <div className="flex items-center justify-between">
@@ -522,7 +545,7 @@ export default function SystemPromptsPage() {
                     id="welcome-message"
                     value={welcomeMessage}
                     onChange={(e) => setWelcomeMessage(e.target.value)}
-                    className="min-h-[120px] text-sm"
+                    className="min-h-[100px] sm:min-h-[120px] text-sm"
                     placeholder="Enter welcome message..."
                   />
                   <p className="text-xs text-muted-foreground">

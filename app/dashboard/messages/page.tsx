@@ -1,14 +1,17 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { MessageSquare, Send, CheckCircle2, XCircle, Clock } from "lucide-react"
+import { useProject } from "@/lib/project-context"
+import { getProjectMessages } from "@/lib/mock-data"
 
 export default function MessagesPage() {
+  const { activeProject } = useProject()
   const [activeTab, setActiveTab] = useState("all")
 
   const messagingPlatforms = [
@@ -32,62 +35,20 @@ export default function MessagesPage() {
     },
   ]
 
-  const allMessages = [
-    {
-      id: 1,
-      type: "Promotion",
-      channel: "WhatsApp",
-      status: "Sent",
-      timestamp: "2025-01-15 11:52:34",
-      preview: "Special offer: Get 20% off on your next purchase! Use code VOCA20 at checkout.",
-      recipient: "+1 (555) 123-4567",
-    },
-    {
-      id: 2,
-      type: "Booking Confirmation",
-      channel: "WhatsApp",
-      status: "Sent",
-      timestamp: "2025-01-15 11:48:12",
-      preview: "Your appointment has been confirmed for January 18, 2025 at 2:30 PM.",
-      recipient: "+1 (555) 234-5678",
-    },
-    {
-      id: 3,
-      type: "Feature Update",
-      channel: "Facebook Messenger",
-      status: "Sent",
-      timestamp: "2025-01-15 11:45:56",
-      preview: "We've just launched new AI voice features! Check out what's new in your dashboard.",
-      recipient: "john.smith@email.com",
-    },
-    {
-      id: 4,
-      type: "Promotion",
-      channel: "WhatsApp",
-      status: "Failed",
-      timestamp: "2025-01-15 11:42:23",
-      preview: "Flash sale alert! Limited time offer on premium plans.",
-      recipient: "+1 (555) 345-6789",
-    },
-    {
-      id: 5,
-      type: "Booking Confirmation",
-      channel: "Facebook Messenger",
-      status: "Pending",
-      timestamp: "2025-01-15 11:38:45",
-      preview: "Booking request received. We'll confirm your slot within 24 hours.",
-      recipient: "sarah.johnson@email.com",
-    },
-    {
-      id: 6,
-      type: "Feature Update",
-      channel: "WhatsApp",
-      status: "Sent",
-      timestamp: "2025-01-15 11:35:12",
-      preview: "New analytics dashboard is now available. Track your call metrics in real-time.",
-      recipient: "+1 (555) 456-7890",
-    },
-  ]
+  // TODO: Replace with Supabase query: SELECT * FROM messages WHERE project_id = $1 ORDER BY timestamp DESC
+  const allMessages = useMemo(() => {
+    if (!activeProject) return []
+    const messages = getProjectMessages(activeProject.id)
+    return messages.map((msg, idx) => ({
+      id: msg.id,
+      type: msg.type,
+      channel: msg.channel,
+      status: msg.status,
+      timestamp: msg.timestamp || `2025-01-15 ${11 - idx}:${50 - idx * 2}:${30 + idx * 4}`,
+      preview: msg.preview || `${msg.type} message`,
+      recipient: msg.recipient,
+    }))
+  }, [activeProject])
 
   const getFilteredMessages = () => {
     if (activeTab === "all") return allMessages
@@ -116,12 +77,25 @@ export default function MessagesPage() {
     return variants[status as keyof typeof variants] || ""
   }
 
+  if (!activeProject) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Messages</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">Please select a project to manage your messaging channels and view message logs.</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Messages</h1>
-          <p className="text-muted-foreground mt-1">Manage your messaging channels and view message logs</p>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Messages</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">Manage your messaging channels and view message logs</p>
         </div>
 
         {/* Connected Messaging Platforms */}
@@ -138,7 +112,7 @@ export default function MessagesPage() {
                   className="flex flex-col gap-3 p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="text-3xl">{platform.icon}</span>
+                    <span className="text-2xl sm:text-3xl">{platform.icon}</span>
                     <div className="flex-1">
                       <p className="text-sm font-medium">{platform.name}</p>
                       <Badge

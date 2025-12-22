@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { AuthProvider } from "@/lib/auth-context"
+import { ProjectProvider } from "@/lib/project-context"
 import { Toaster } from "@/components/ui/toaster"
 import "./globals.css"
 
@@ -41,7 +42,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`font-sans antialiased`}>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <ProjectProvider>{children}</ProjectProvider>
+        </AuthProvider>
         <Toaster />
         <Analytics />
       </body>

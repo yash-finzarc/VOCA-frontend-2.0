@@ -1,113 +1,84 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Search, Phone, Cpu, Activity, ChevronDown, ChevronRight } from "lucide-react"
+import { useProject } from "@/lib/project-context"
 
 export default function LogsPage() {
+  const { activeProject } = useProject()
   const [searchQuery, setSearchQuery] = useState("")
   const [expandedLog, setExpandedLog] = useState<number | null>(null)
 
-  const systemLogs = [
-    {
-      id: 1,
-      level: "info",
-      timestamp: "2025-01-15 11:52:45",
-      message: "System health check completed successfully",
-      details: "All services operational. Response time: 45ms",
-    },
-    {
-      id: 2,
-      level: "warning",
-      timestamp: "2025-01-15 11:48:23",
-      message: "High memory usage detected",
-      details: "Memory usage at 85%. Consider scaling resources.",
-    },
-    {
-      id: 3,
-      level: "info",
-      timestamp: "2025-01-15 11:45:12",
-      message: "Database backup completed",
-      details: "Backup size: 2.3 GB. Stored in S3 bucket.",
-    },
-    {
-      id: 4,
-      level: "error",
-      timestamp: "2025-01-15 11:42:56",
-      message: "Failed to connect to external API",
-      details: "Timeout error after 30s. Retrying with exponential backoff.",
-    },
-  ]
+  // TODO: Replace with Supabase query: SELECT * FROM system_logs WHERE project_id = $1 ORDER BY timestamp DESC
+  const systemLogs = useMemo(() => {
+    if (!activeProject) return []
+    return [
+      {
+        id: 1,
+        level: "info",
+        timestamp: "2025-01-15 11:52:45",
+        message: `System health check completed successfully for ${activeProject.name}`,
+        details: "All services operational. Response time: 45ms",
+      },
+      {
+        id: 2,
+        level: "warning",
+        timestamp: "2025-01-15 11:48:23",
+        message: "High memory usage detected",
+        details: "Memory usage at 85%. Consider scaling resources.",
+      },
+    ]
+  }, [activeProject])
 
-  const callLogs = [
-    {
-      id: 1,
-      callSid: "CA1234567890abcdef",
-      timestamp: "2025-01-15 11:45:32",
-      direction: "Outbound",
-      status: "Completed",
-      duration: "00:05:23",
-      from: "+1 (555) 000-0000",
-      to: "+1 (555) 123-4567",
-      details: "Customer inquiry about pricing. Successfully qualified lead.",
-    },
-    {
-      id: 2,
-      callSid: "CA2345678901bcdefg",
-      timestamp: "2025-01-15 11:42:18",
-      direction: "Inbound",
-      status: "Completed",
-      duration: "00:03:45",
-      from: "+1 (555) 234-5678",
-      to: "+1 (555) 000-0000",
-      details: "Support request resolved. Customer satisfaction: High.",
-    },
-    {
-      id: 3,
-      callSid: "CA3456789012cdefgh",
-      timestamp: "2025-01-15 11:38:56",
-      direction: "Outbound",
-      status: "No Answer",
-      duration: "00:00:00",
-      from: "+1 (555) 000-0000",
-      to: "+1 (555) 345-6789",
-      details: "Call not answered. Scheduled for retry.",
-    },
-  ]
+  // TODO: Replace with Supabase query: SELECT * FROM call_logs WHERE project_id = $1 ORDER BY timestamp DESC
+  const callLogs = useMemo(() => {
+    if (!activeProject) return []
+    return [
+      {
+        id: 1,
+        callSid: `CA${activeProject.id.slice(-6)}123456`,
+        timestamp: "2025-01-15 11:45:32",
+        direction: "Outbound",
+        status: "Completed",
+        duration: "00:05:23",
+        from: "+1 (555) 000-0000",
+        to: "+1 (555) 123-4567",
+        details: "Customer inquiry about pricing. Successfully qualified lead.",
+      },
+      {
+        id: 2,
+        callSid: `CA${activeProject.id.slice(-6)}234567`,
+        timestamp: "2025-01-15 11:42:18",
+        direction: "Inbound",
+        status: "Completed",
+        duration: "00:03:45",
+        from: "+1 (555) 234-5678",
+        to: "+1 (555) 000-0000",
+        details: "Support request resolved. Customer satisfaction: High.",
+      },
+    ]
+  }, [activeProject])
 
-  const aiDecisionLogs = [
-    {
-      id: 1,
-      timestamp: "2025-01-15 11:45:34",
-      callSid: "CA1234567890abcdef",
-      decision: "Transferred to sales team",
-      confidence: 0.92,
-      reasoning: "Customer expressed interest in enterprise plan with 100+ users",
-      context: "Keywords detected: pricing, enterprise, team size, integration",
-    },
-    {
-      id: 2,
-      timestamp: "2025-01-15 11:42:20",
-      callSid: "CA2345678901bcdefg",
-      decision: "Resolved query autonomously",
-      confidence: 0.88,
-      reasoning: "Standard technical question about API authentication",
-      context: "Provided documentation link and code example",
-    },
-    {
-      id: 3,
-      timestamp: "2025-01-15 11:35:45",
-      callSid: "CA4567890123defghi",
-      decision: "Scheduled callback",
-      confidence: 0.95,
-      reasoning: "Customer requested specific time for detailed discussion",
-      context: "Callback scheduled for Jan 16, 2025 at 3:00 PM",
-    },
-  ]
+  // TODO: Replace with Supabase query: SELECT * FROM ai_decision_logs WHERE project_id = $1 ORDER BY timestamp DESC
+  const aiDecisionLogs = useMemo(() => {
+    if (!activeProject) return []
+    return [
+      {
+        id: 1,
+        timestamp: "2025-01-15 11:45:34",
+        callSid: `CA${activeProject.id.slice(-6)}123456`,
+        decision: "Transferred to sales team",
+        confidence: 0.92,
+        reasoning: "Customer expressed interest in enterprise plan with 100+ users",
+        context: "Keywords detected: pricing, enterprise, team size, integration",
+      },
+    ]
+  }, [activeProject])
 
   const getLevelColor = (level: string) => {
     const colors = {
@@ -123,12 +94,25 @@ export default function LogsPage() {
     setExpandedLog(expandedLog === id ? null : id)
   }
 
+  if (!activeProject) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Logs</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">Please select a project to monitor system activity, calls, and AI decisions.</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Logs</h1>
-          <p className="text-muted-foreground mt-1">Monitor system activity, calls, and AI decisions</p>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Logs</h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">Monitor system activity, calls, and AI decisions</p>
         </div>
 
         {/* Search */}
